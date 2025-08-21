@@ -1,0 +1,91 @@
+---
+title: "Day 8: Tasks & Activities"
+format: html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(here)
+library(lubridate)
+library(paletteer)
+library(patchwork)
+library(stringr)
+library(ggcats)
+library(ggplot2)
+library(Ecdat)
+library(gganimate)
+library(readr)
+```
+
+## Task 1: Do Your Data Viz Worst
+
+```{r}
+launch <- read_csv(here::here("data", "space_launches.csv"), show_col_types = FALSE) %>%
+  filter(!is.na(launch_year), !is.na(agency)) %>%
+  mutate(agency = forcats::fct_infreq(agency))  # stable order by frequency
+
+p <- launch %>%
+  left_join(agency_cats, by = "agency") %>%
+  ggplot(aes(x = launch_year, y = agency)) +
+  geom_cat(cat = "nyancat",
+           size = 3.5,
+           position = position_jitter(width = 0.15, height = 0.2)) +
+  labs(title = "Space Launches by Agency (but with Cats 🐱)", 
+       x = "Year", 
+       y = "Agency") +
+  theme_classic(base_size = 14) +
+  theme(plot.background  = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+ggsave(here::here("figs", "ggcats_03.png"), p)
+```
+
+## Task 2: Wrangling Practice with the SF Greenhouse Gas Data
+- Create a summary table of total annual greenhouse gas emissions (only from Emissions_mtCO2e column) by sector_general
+- Create a summary table of total annual greenhouse gas emissions (only from Emissions_mtCO2e column) by year and commodity type
+
+```{r}
+sf_ghg <- read.csv(here("data", "San_Francisco_Communitywide_Greenhouse_Gas_Inventory.csv"))
+
+sf_ghg_annual <- sf_ghg %>% 
+  group_by(Sector_General) %>% 
+  summarise(total_annual_ghg = sum(Emissions_mtCO2e, na.rm = TRUE))
+
+sf_ghg_yrcom <- sf_ghg %>% 
+  group_by(Calendar_Year, Commodity_Type) %>% 
+  summarise(total_annual_ghg_yc = sum(Emissions_mtCO2e, na.rm = TRUE))
+
+sf_ghg_ss <- sf_ghg %>% 
+  filter(Calendar_Year == "2005") %>% 
+  filter(str_detect(Sector_Detail2, "PG&E")) %>% 
+  select(Calendar_Year, Sector_Detail2, Emissions_mtCO2e)
+```
+
+## Task 3: Do Your Data Viz Best
+```{r}
+sf_ghg %>%
+  group_by(Calendar_Year, Sector_General) %>%
+  summarize(total_emissions = sum(Emissions_mtCO2e)) %>%
+  ggplot(aes(x = Calendar_Year, y = total_emissions, color = Sector_General)) +
+  geom_line(size = 1.25) +
+  labs(
+    title = "San Francisco Greenhouse Gas Emissions by Sector",
+    x = "Year",
+    y = "CO2 Emissions (Metric Tons)",
+    caption = "Source: San Francisco Department of the Environment"
+  ) +
+  scale_color_brewer(palette = "Dark2") +
+  theme(plot.background = element_rect(fill = "white")) +
+  theme(legend.position = "bottom") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggsave(here("figs", "ok.png"))
+```
+
+
